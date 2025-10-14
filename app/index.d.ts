@@ -1,9 +1,9 @@
 declare interface BaseUser {
-  id: string;
+  accountId: string;
   name: string;
   email: string;
-  dateJoined: string;
   imageUrl: string;
+  joinedAt: string;
 }
 
 declare interface UserData extends BaseUser {
