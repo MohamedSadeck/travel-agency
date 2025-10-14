@@ -4,7 +4,12 @@ import { redirect } from "react-router";
 
 export const loginWithGoogle = async () => {
     try {
-        account.createOAuth2Session({ provider: OAuthProvider.Google })
+        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+        account.createOAuth2Session({
+            provider: OAuthProvider.Google,
+            success: `${origin}/`,
+            failure: `${origin}/sign-in`
+        })
     } catch (error) {
         console.error('Login with Google failed', error);
     }
@@ -20,10 +25,24 @@ export const getUser = async () => {
             tableId: appwriteConfig.usersTableId,
             queries: [
                 Query.equal('$id', user.$id),
-                Query.select(['$id', 'name', 'email', 'imageUrl', '$createdAt'])
+                Query.select(['$id', 'name', 'email', 'imageUrl', '$createdAt', '$updatedAt'])
             ]
         });
-        return user;
+        
+        if (!rows.rows || rows.rows.length === 0) {
+            return redirect('/sign-in');
+        }
+        
+        const userData = rows.rows[0];
+        
+        return {
+            id: userData.$id,
+            name: userData.name,
+            email: userData.email,
+            imageUrl: userData.imageUrl || '',
+            createdAt: userData.$createdAt,
+            updatedAt: userData.$updatedAt
+        } as User;
     } catch (error) {
         console.error('Get user failed', error);
     }

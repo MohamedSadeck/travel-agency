@@ -4,6 +4,7 @@ declare interface BaseUser {
   email: string;
   imageUrl: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 declare interface UserData extends BaseUser {

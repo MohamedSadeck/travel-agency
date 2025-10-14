@@ -1,8 +1,16 @@
 import { Header, StatsCard, TripCard } from "components"
+import { redirect } from "react-router";
+import { getUser } from "~/appwrite/auth";
+import { account } from "~/appwrite/client";
 import { dashboardStats, user, allTrips } from "~/constants"
-function Dashboard() {
-  const { totalUsers, usersJoined, totalTrips, tripsCreated, userRole } = dashboardStats
+import type { Route } from './+types/dashboard'
 
+const { totalUsers, usersJoined, totalTrips, tripsCreated, userRole } = dashboardStats
+
+export const clientLoader = async () => await getUser()
+
+function Dashboard({ loaderData }: Route.ComponentProps) {
+  const user = loaderData as User;
   return (
     <main className="dashboard wrapper">
       <Header
@@ -38,7 +46,7 @@ function Dashboard() {
           Created Trips
         </h1>
         <div className="trip-grid" >
-          {allTrips.slice(0, 4).map(({id, estimatedPrice, imageUrls, itinerary,name, tags}) => (
+          {allTrips.slice(0, 4).map(({ id, estimatedPrice, imageUrls, itinerary, name, tags }) => (
             <TripCard
               key={id}
               id={id.toString()}

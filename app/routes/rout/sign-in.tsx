@@ -7,7 +7,7 @@ export async function clientLoader(){
   try {
     const user = await account.get();
     if(user.$id) return redirect('/');
-    
+
 
   } catch (error) {
     console.log('Error fetching user', error)
@@ -17,7 +17,7 @@ export async function clientLoader(){
 const SignIn = () => {
   return (
     <main className="auth" >
-      <section className="size-full glassmorphism flex items-center px-6">
+      <section className="size-full glassmorphism flex items-center px-6 justify-center">
         <div className="sign-in-card">
           <header className="header">
             <Link to='/'>
@@ -48,7 +48,7 @@ const SignIn = () => {
               alt="google"
             />
             <span className="p-18-semibold text-white">
-              SignIn with Google
+              Sign In with Google
             </span>
           </ButtonComponent>
         </div>
