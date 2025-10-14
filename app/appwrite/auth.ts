@@ -2,56 +2,125 @@ import { OAuthProvider, Query } from "appwrite";
 import { account, appwriteConfig, tables } from "./client";
 import { redirect } from "react-router";
 
-export const loginWithGoogle = async ()=> {
-    try{
-        account.createOAuth2Session({provider:OAuthProvider.Google})
-    }catch(error){
+export const loginWithGoogle = async () => {
+    try {
+        account.createOAuth2Session({ provider: OAuthProvider.Google })
+    } catch (error) {
         console.error('Login with Google failed', error);
     }
 }
-export const logoutUser = async ()=> {
-    try{
 
-    }catch(error){
-        console.error('Logout failed', error);
-    }
-}
-export const getUser = async ()=> {
-    try{
+export const getUser = async () => {
+    try {
         const user = await account.get();
-        if(!user) return redirect('/sign-in');
+        if (!user) return redirect('/sign-in');
 
-        const rows = await tables.listRows ({
+        const rows = await tables.listRows({
             databaseId: appwriteConfig.databaseId,
             tableId: appwriteConfig.usersTableId,
             queries: [
-                Query.equal('userId', user.$id),
-                Query.select(['name', 'email', 'imageUrl', 'joinedAt', 'accountId'])
+                Query.equal('$id', user.$id),
+                Query.select(['$id', 'name', 'email', 'imageUrl', '$createdAt'])
             ]
         });
         return user;
-    }catch(error){
+    } catch (error) {
         console.error('Get user failed', error);
     }
 }
-export const getGooglePicture = async ()=> {
-    try{
 
-    }catch(error){
+export const getGooglePicture = async () => {
+    try {
+        // Get the current session to retrieve the access token
+        const session = await account.getSession({ sessionId: 'current' });
+        const accessToken = session.providerAccessToken;
+
+        if (!accessToken) {
+            throw new Error('No access token available');
+        }
+
+        // Fetch user info from Google People API
+        const response = await fetch(
+            'https://people.googleapis.com/v1/people/me?personFields=photos',
+            {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch profile photo from Google');
+        }
+
+        const data = await response.json();
+
+        // Return the photo URL (Google provides multiple sizes, we'll return the first one)
+        return data.photos?.[0]?.url || null;
+    } catch (error) {
         console.error('Get Google picture failed', error);
+        return null;
     }
 }
-export const storeUserData = async ()=> {
-    try{
 
-    }catch(error){
-        console.error('Store user data failed', error);
+export const logoutUser = async () => {
+    try {
+        await account.deleteSession({ sessionId: 'current' });
+        return redirect('/sign-in');
+    } catch (error) {
+        console.error('Logout failed', error);
     }
 }
-export const getExistingUser = async ()=> {
-    try{
 
-    }catch(error){
+export const getExistingUser = async (id: string) => {
+    try {
+        const rows = await tables.listRows({
+            databaseId: appwriteConfig.databaseId,
+            tableId: appwriteConfig.usersTableId,
+            queries: [
+                Query.equal('$id', id),
+                Query.limit(1)
+            ]
+        });
+
+        return rows.rows && rows.rows.length > 0 ? rows.rows[0] : null;
+    } catch (error) {
         console.error('Get existing user failed', error);
+        return null;
+    }
+}
+
+export const storeUserData = async () => {
+    try {
+        const user = await account.get();
+        if (!user) throw new Error('No user session found');
+
+        // Check if user already exists
+        const existingUser = await getExistingUser(user.$id);
+        if (existingUser) {
+            return existingUser;
+        }
+
+        // Get the profile picture URL
+        const imageUrl = await getGooglePicture();
+
+        // Generate a unique row ID
+        const rowId = user.$id;
+
+        // Create new user record in the database
+        const newUser = await tables.createRow({
+            databaseId: appwriteConfig.databaseId,
+            tableId: appwriteConfig.usersTableId,
+            rowId: rowId,
+            data: {
+                name: user.name,
+                email: user.email,
+                imageUrl: imageUrl || '',
+            }
+        });
+
+        return newUser;
+    } catch (error) {
+        console.error('Store user data failed', error);
     }
 }
