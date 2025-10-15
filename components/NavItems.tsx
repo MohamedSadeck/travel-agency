@@ -1,5 +1,4 @@
 import { cn } from 'lib/utils'
-import React from 'react'
 import { Link, NavLink, useLoaderData, useNavigate } from 'react-router'
 import { logoutUser } from '~/appwrite/auth'
 import { sidebarItems } from '~/constants'
@@ -25,7 +24,6 @@ function NavItems({ handleClick }: { handleClick?: () => void }) {
               {({ isActive }: { isActive: boolean }) => (
                 <div
                   className={cn('group nav-item', { 'bg-primary-100 !text-white': isActive })}
-                  onClick={handleLogout}
                 >
                   <img src={icon} alt={label} className={`group-hover:brightness-0 size-4 group-hover:invert ${isActive ? 'brightness-0 invert' : 'text-dark-200'}`} />
                   <label >{label}</label>
@@ -40,7 +38,7 @@ function NavItems({ handleClick }: { handleClick?: () => void }) {
             <h2>{user?.name || 'David'}</h2>
             <p>{user?.email || 'david@example.com'}</p>
           </article>
-          <button onClick={logoutUser} className='cursor-pointer'>
+          <button onClick={handleLogout} className='cursor-pointer'>
             <img src='/assets/icons/logout.svg' alt='logout' className='size-6' />
           </button>
         </footer>

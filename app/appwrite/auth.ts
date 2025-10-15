@@ -1,6 +1,7 @@
 import { OAuthProvider, Query } from "appwrite";
 import { account, appwriteConfig, tables } from "./client";
 import { redirect } from "react-router";
+import { users } from "~/constants";
 
 export const loginWithGoogle = async () => {
     try {
@@ -211,5 +212,37 @@ export const storeUserData = async () => {
         }
         
         throw error; // Re-throw to let caller handle it
+    }
+}
+
+export const getAllUsers = async (limit: number, offset: number) =>{
+    try {
+        const res = await tables.listRows({
+            databaseId: appwriteConfig.databaseId,
+            tableId: appwriteConfig.usersTableId,
+            queries: [
+                Query.limit(limit),
+                Query.offset(offset),
+                Query.select(['$id', 'name', 'email', 'imageUrl', '$createdAt', 'status'])
+            ]
+        });
+
+        if(!res.rows || res.rows.length === 0) return { users: [], total: 0};
+
+        return {
+            users:
+            res.rows.map(row => ({
+                id: row.$id,
+                name: row.name,
+                email: row.email,
+                imageUrl: row.imageUrl || '',
+                createdAt: row.$createdAt,
+                status: row.status || 'user'
+            } as UserData)),
+            total: res.total
+        }
+    } catch (error) {
+        console.log('Error: getAllUsers failed', error)
+        return { users: [], total:0}
     }
 }
