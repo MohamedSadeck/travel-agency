@@ -8,6 +8,7 @@
       "url": "http://localhost:5173",
       "webRoot": "${workspaceFolder}",
       "sourceMaps": true,
+      "userDataDir": false,
       "sourceMapPathOverrides": {
         "webpack:///./~/*": "${webRoot}/node_modules/*",
         "webpack:///./*": "${webRoot}/*",
@@ -21,6 +22,7 @@
       "url": "http://localhost:5173",
       "webRoot": "${workspaceFolder}",
       "sourceMaps": true,
+      "userDataDir": false,
       "sourceMapPathOverrides": {
         "webpack:///./~/*": "${webRoot}/node_modules/*",
         "webpack:///./*": "${webRoot}/*",

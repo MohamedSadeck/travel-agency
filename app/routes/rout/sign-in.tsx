@@ -1,20 +1,50 @@
 import { ButtonComponent } from "@syncfusion/ej2-react-buttons"
-import { Link, redirect } from "react-router"
-import { loginWithGoogle } from "~/appwrite/auth"
+import { Link, redirect, useSearchParams } from "react-router"
+import { loginWithGoogle, storeUserData } from "~/appwrite/auth"
 import { account } from "~/appwrite/client"
+import { useEffect } from "react"
 
 export async function clientLoader(){
   try {
     const user = await account.get();
-    if(user.$id) return redirect('/');
+    // If user is authenticated, they need to be stored in DB and redirected
+    if(user.$id) {
+      // Store user data in database if OAuth callback
+      const url = new URL(window.location.href);
+      if (url.searchParams.get('oauth') === 'success') {
+        console.log('OAuth callback detected, storing user data...');
+        try {
+          await storeUserData();
+          console.log('User data stored successfully');
+        } catch (dbError: any) {
+          // Log database errors but don't block the redirect
+          // This might happen if user already exists or permissions issue
+          console.error('Failed to store user data:', dbError.message || dbError);
+        }
+      }
+      return redirect('/dashboard');
+    }
 
-
-  } catch (error) {
-    console.log('Error fetching user', error)
+  } catch (error:any) {
+      // If user is not authenticated (401/unauthorized), that's expected on sign-in page
+      // Only log errors that are NOT authentication-related
+      if (error?.code !== 401 && error?.type !== 'general_unauthorized_scope') {
+        console.error('Unexpected error:', error);
+      }
   }
+  return null;
 }
 
 const SignIn = () => {
+  const [searchParams] = useSearchParams();
+  const oauthStatus = searchParams.get('oauth');
+
+  useEffect(() => {
+    if (oauthStatus === 'failure') {
+      console.error('OAuth authentication failed');
+    }
+  }, [oauthStatus]);
+
   return (
     <main className="auth" >
       <section className="size-full glassmorphism flex items-center px-6 justify-center">
@@ -36,6 +66,11 @@ const SignIn = () => {
               Sign in with Google to manage destinations, itineraries, and user activity with ease.
             </p>
           </article>
+          {oauthStatus === 'failure' && (
+            <p className="text-red-500 text-center mb-4">
+              Authentication failed. Please try again.
+            </p>
+          )}
           <ButtonComponent
             type="button"
             iconCss="e-search-icon"

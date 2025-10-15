@@ -7,8 +7,8 @@ export const loginWithGoogle = async () => {
         const origin = typeof window !== 'undefined' ? window.location.origin : '';
         account.createOAuth2Session({
             provider: OAuthProvider.Google,
-            success: `${origin}/`,
-            failure: `${origin}/sign-in`
+            success: `${origin}/sign-in?oauth=success`,
+            failure: `${origin}/sign-in?oauth=failure`
         })
     } catch (error) {
         console.error('Login with Google failed', error);
@@ -20,31 +20,84 @@ export const getUser = async () => {
         const user = await account.get();
         if (!user) return redirect('/sign-in');
 
-        const rows = await tables.listRows({
-            databaseId: appwriteConfig.databaseId,
-            tableId: appwriteConfig.usersTableId,
-            queries: [
-                Query.equal('$id', user.$id),
-                Query.select(['$id', 'name', 'email', 'imageUrl', '$createdAt', '$updatedAt'])
-            ]
-        });
-        
-        if (!rows.rows || rows.rows.length === 0) {
-            return redirect('/sign-in');
+        try {
+            const rows = await tables.listRows({
+                databaseId: appwriteConfig.databaseId,
+                tableId: appwriteConfig.usersTableId,
+                queries: [
+                    Query.equal('$id', user.$id),
+                    Query.select(['$id', 'name', 'email', 'imageUrl', '$createdAt', '$updatedAt'])
+                ]
+            });
+            
+            if (!rows.rows || rows.rows.length === 0) {
+                // User exists in Auth but not in database - try to create them
+                console.log('User not found in database, attempting to create...');
+                try {
+                    await storeUserData();
+                    // Retry fetching after creation
+                    const retryRows = await tables.listRows({
+                        databaseId: appwriteConfig.databaseId,
+                        tableId: appwriteConfig.usersTableId,
+                        queries: [
+                            Query.equal('$id', user.$id),
+                            Query.select(['$id', 'name', 'email', 'imageUrl', '$createdAt', '$updatedAt'])
+                        ]
+                    });
+                    
+                    if (retryRows.rows && retryRows.rows.length > 0) {
+                        const userData = retryRows.rows[0];
+                        return {
+                            id: userData.$id,
+                            name: userData.name,
+                            email: userData.email,
+                            imageUrl: userData.imageUrl || '',
+                            createdAt: userData.$createdAt,
+                            updatedAt: userData.$updatedAt
+                        } as User;
+                    }
+                } catch (createError) {
+                    console.error('Failed to create user in database:', createError);
+                }
+                
+                // If we still can't get/create user in DB, use auth data as fallback
+                console.warn('Using auth data as fallback for user information');
+                return {
+                    id: user.$id,
+                    name: user.name,
+                    email: user.email,
+                    imageUrl: '',
+                    createdAt: user.$createdAt,
+                    updatedAt: user.$updatedAt
+                } as User;
+            }
+            
+            const userData = rows.rows[0];
+            
+            return {
+                id: userData.$id,
+                name: userData.name,
+                email: userData.email,
+                imageUrl: userData.imageUrl || '',
+                createdAt: userData.$createdAt,
+                updatedAt: userData.$updatedAt
+            } as User;
+        } catch (dbError: any) {
+            // Database read failed (likely permissions issue)
+            // Use auth user data as fallback
+            console.error('Database query failed, using auth data:', dbError.message || dbError);
+            return {
+                id: user.$id,
+                name: user.name,
+                email: user.email,
+                imageUrl: '',
+                createdAt: user.$createdAt,
+                updatedAt: user.$updatedAt
+            } as User;
         }
-        
-        const userData = rows.rows[0];
-        
-        return {
-            id: userData.$id,
-            name: userData.name,
-            email: userData.email,
-            imageUrl: userData.imageUrl || '',
-            createdAt: userData.$createdAt,
-            updatedAt: userData.$updatedAt
-        } as User;
     } catch (error) {
         console.error('Get user failed', error);
+        return redirect('/sign-in');
     }
 }
 
@@ -117,8 +170,11 @@ export const storeUserData = async () => {
         // Check if user already exists
         const existingUser = await getExistingUser(user.$id);
         if (existingUser) {
+            console.log('User already exists in database:', existingUser.$id);
             return existingUser;
         }
+
+        console.log('Creating new user in database:', user.$id);
 
         // Get the profile picture URL
         const imageUrl = await getGooglePicture();
@@ -135,11 +191,25 @@ export const storeUserData = async () => {
                 name: user.name,
                 email: user.email,
                 imageUrl: imageUrl || '',
-            }
+            },
+            // Add permissions to allow the user to read/update their own data
+            permissions: [
+                `read("user:${user.$id}")`,
+                `update("user:${user.$id}")`,
+                `delete("user:${user.$id}")`
+            ]
         });
 
+        console.log('User created successfully in database:', newUser.$id);
         return newUser;
-    } catch (error) {
-        console.error('Store user data failed', error);
+    } catch (error: any) {
+        console.error('Store user data failed:', error.message || error);
+        
+        // Provide more specific error information
+        if (error?.code === 401 || error?.type === 'general_unauthorized_scope') {
+            throw new Error('Database permissions error: Please configure your Appwrite Users table to allow "Create" permission for "Any" or "Users" role');
+        }
+        
+        throw error; // Re-throw to let caller handle it
     }
 }
