@@ -92,7 +92,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             tableId: appwriteConfig.tripsTableId,
             rowId: ID.unique(),
             data: {
-                tripDetail: JSON.stringify(trip),
+                tripDetails: JSON.stringify(trip),
                 imageUrls,
                 userId
             }
