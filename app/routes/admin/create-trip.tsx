@@ -2,12 +2,13 @@ import { ComboBoxComponent } from "@syncfusion/ej2-react-dropdowns";
 import { Header } from "components"
 import type { Route } from "./+types/create-trip";
 import { useMemo, useState } from "react";
-import { comboBoxItems, selectItems } from "~/constants";
+import { comboBoxItems, selectItems, travelStyles } from "~/constants";
 import { cn, formatKey } from "lib/utils";
 import { LayerDirective, LayersDirective, MapsComponent } from "@syncfusion/ej2-react-maps";
 import { world_map } from "~/constants/world_map";
 import { Button, ButtonComponent } from "@syncfusion/ej2-react-buttons";
 import { account } from "~/appwrite/client";
+import { useNavigate } from "react-router";
 
 export const loader = async () => {
   console.log('Fetching countries data from REST Countries API...');
@@ -33,6 +34,8 @@ const itemTemplate = (data: any) => (
 );
 
 const CreateTrip = ({ loaderData }: Route.ComponentProps) => {
+
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState<TripFormData>({
     country: 'Algeria',
@@ -94,8 +97,27 @@ const CreateTrip = ({ loaderData }: Route.ComponentProps) => {
     }
 
     try {
-      console.log('user', user);
-      console.log('Creating trip with data:', formData);
+      const response = await fetch('/api/create-trip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          country: formData.country,
+          numberOfDays: formData.duration,
+          travelStyle: formData.travelStyle,
+          interests: formData.interest,
+          budget: formData.budget,
+          groupType: formData.groupType,
+          userId: user.$id
+        })
+      });
+
+      const result : CreateTripResponse = await response.json();
+      if (result?.id) {
+        navigate(`/trips/${result.id}`);
+      }else{
+        console.error('Error creating trip: Invalid response', result);
+        setError('An error occurred while creating the trip. Please try again.');
+      }
     } catch (error) {
       console.error('Error creating trip:', error);
       setError('An error occurred while creating the trip. Please try again.');
