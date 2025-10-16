@@ -1,15 +1,19 @@
 import { Header, StatsCard, TripCard } from "components"
 import { getUser } from "~/appwrite/auth";
-import { dashboardStats, user, allTrips } from "~/constants"
+import { getUsersAndTripsStats } from "~/appwrite/dashboard";
+import { allTrips } from "~/constants"
 import type { Route } from './+types/dashboard'
 
-const { totalUsers, usersJoined, totalTrips, tripsCreated, userRole } = dashboardStats
-
-export const clientLoader = async () => await getUser()
-
+export const clientLoader = async () => {
+  const [user, stats] = await Promise.all([
+    getUser(),
+    getUsersAndTripsStats()
+  ])
+  return { user, stats }
+}
 
 function Dashboard({ loaderData }: Route.ComponentProps) {
-  const user = loaderData as User;
+  const { user, stats } = loaderData as { user: User; stats: DashboardStats };
   return (
     <main className="dashboard wrapper">
       <Header
@@ -20,21 +24,21 @@ function Dashboard({ loaderData }: Route.ComponentProps) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6" >
           <StatsCard
             headerTitle="Total Users"
-            total={totalUsers}
-            currentMonthCount={usersJoined.currentMonth}
-            lastMonthCount={usersJoined.previousMonth}
+            total={stats.totalUsers}
+            currentMonthCount={stats.usersJoined.currentMonth}
+            lastMonthCount={stats.usersJoined.lastMonth}
           />
           <StatsCard
             headerTitle="Total Trips"
-            total={totalTrips}
-            currentMonthCount={tripsCreated.currentMonth}
-            lastMonthCount={tripsCreated.previousMonth}
+            total={stats.totalTrips}
+            currentMonthCount={stats.tripsCreated.currentMonth}
+            lastMonthCount={stats.tripsCreated.lastMonth}
           />
           <StatsCard
             headerTitle="Active Users"
-            total={userRole.total}
-            currentMonthCount={userRole.currentMonth}
-            lastMonthCount={userRole.previousMonth}
+            total={stats.userRole.total}
+            currentMonthCount={stats.userRole.currentMonth}
+            lastMonthCount={stats.userRole.lastMonth}
           />
 
         </div>
