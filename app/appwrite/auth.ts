@@ -1,7 +1,6 @@
 import { OAuthProvider, Query } from "appwrite";
 import { account, appwriteConfig, tables } from "./client";
 import { redirect } from "react-router";
-import { users } from "~/constants";
 
 export const loginWithGoogle = async () => {
     try {
@@ -10,7 +9,7 @@ export const loginWithGoogle = async () => {
             provider: OAuthProvider.Google,
             success: `${origin}/sign-in?oauth=success`,
             failure: `${origin}/sign-in?oauth=failure`
-        })
+        });
     } catch (error) {
         console.error('Login with Google failed', error);
     }
@@ -193,12 +192,6 @@ export const storeUserData = async () => {
                 email: user.email,
                 imageUrl: imageUrl || '',
             },
-            // Add permissions to allow the user to read/update their own data
-            permissions: [
-                `read("user:${user.$id}")`,
-                `update("user:${user.$id}")`,
-                `delete("user:${user.$id}")`
-            ]
         });
 
         console.log('User created successfully in database:', newUser.$id);

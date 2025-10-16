@@ -9,6 +9,7 @@ import { world_map } from "~/constants/world_map";
 import { ButtonComponent } from "@syncfusion/ej2-react-buttons";
 import { account } from "~/appwrite/client";
 import { useNavigate } from "react-router";
+import * as Sentry from "@sentry/react";
 
 export const loader = async () => {
   console.log('Fetching countries data from REST Countries API...');
@@ -120,6 +121,22 @@ const CreateTrip = ({ loaderData }: Route.ComponentProps) => {
       }
     } catch (error) {
       console.error('Error creating trip:', error);
+      // Capture the error in Sentry with additional context
+      Sentry.captureException(error, {
+        tags: {
+          action: 'create-trip',
+          country: formData.country,
+        },
+        contexts: {
+          formData: {
+            travelStyle: formData.travelStyle,
+            interest: formData.interest,
+            budget: formData.budget,
+            duration: formData.duration,
+            groupType: formData.groupType,
+          },
+        },
+      });
       setError('An error occurred while creating the trip. Please try again.');
       return;
     }finally{

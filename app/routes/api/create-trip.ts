@@ -15,9 +15,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         userId
     } = await request.json();
 
-    const genAi = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-    const unsplashApiKey = process.env.UNSPLASH_ACCESS_KEY;
+    console.log('=== CREATE TRIP REQUEST ===');
+    console.log('Timestamp:', new Date().toISOString());
+    console.log('Request Data:', { country, numberOfDays, travelStyle, interests, budget, groupType, userId });
+
     try {
+        const genAi = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+        const unsplashApiKey = process.env.UNSPLASH_ACCESS_KEY;
+
         const prompt = `Generate a ${numberOfDays}-day travel itinerary for ${country} based on the following user information:
     Budget: '${budget}'
     Interests: '${interests}'
@@ -65,31 +70,45 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     ]
     }`;
 
-    const textResult = await genAi
-    .getGenerativeModel({ model: "gemini-2.5-flash" })
-    .generateContent([prompt]);
+        console.log('Calling Gemini AI...');
+        const textResult = await genAi
+            .getGenerativeModel({ model: "gemini-2.5-flash" })
+            .generateContent([prompt]);
 
-    const trip = parseMarkdownToJson(textResult.response.text());
-    const imageResponse = await fetch(`https://api.unsplash.com/search/photos?query=${country} ${interests} ${travelStyle}&client_id=${unsplashApiKey}`);
+        console.log('AI Response received:', textResult.response.text().substring(0, 200) + '...');
 
-    const imageUrls = (await imageResponse.json()).results.slice(0,3).map((img: any) => img.urls.regular || null);
+        const trip = parseMarkdownToJson(textResult.response.text());
+        console.log('Parsed trip data:', JSON.stringify(trip, null, 2));
 
-    
+        console.log('Fetching images from Unsplash...');
+        console.log('Image query:', `${country} ${interests} ${travelStyle}`);
+        const imageResponse = await fetch(`https://api.unsplash.com/search/photos?query=${country} ${interests} ${travelStyle}&client_id=${unsplashApiKey}`);
 
-    const result = await tables.createRow({
-        databaseId: appwriteConfig.databaseId,
-        tableId: appwriteConfig.tripsTableId,
-        rowId: ID.unique(),
-        data:{
-            tripDetail: JSON.stringify(trip),
-            imageUrls,
-            userId
-        }
-    });
+        const imageUrls = (await imageResponse.json()).results.slice(0, 3).map((img: any) => img.urls.regular || null);
+        console.log('Image URLs fetched:', imageUrls);
+        console.log('Saving trip to database...');
+        const result = await tables.createRow({
+            databaseId: appwriteConfig.databaseId,
+            tableId: appwriteConfig.tripsTableId,
+            rowId: ID.unique(),
+            data: {
+                tripDetail: JSON.stringify(trip),
+                imageUrls,
+                userId
+            }
+        });
 
-    return data({id: result.$id })
+        console.log('✅ Trip created successfully!');
+        console.log('Trip ID:', result.$id);
+        console.log('=== END CREATE TRIP REQUEST ===\n');
 
+        return data({ id: result.$id });
     } catch (error) {
-        console.log('Error creating trip:', error);
+        // Log and capture to Sentry, then return a 500 response
+        console.error('❌ ERROR CREATING TRIP ===');
+        console.error('Error details:', error);
+        console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace available');
+        console.error('=== END ERROR LOG ===\n');
+        return new Response(JSON.stringify({ error: 'Failed to create trip' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
 }
