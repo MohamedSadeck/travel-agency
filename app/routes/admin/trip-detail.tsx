@@ -20,10 +20,13 @@ export const loader = async ({ params }: LoaderFunctionArgs) => {
     const { tripId } = params;
     if (!tripId) throw new Error('Trip ID is required');
 
-    const trip = await getTripById(tripId);
+    const [trip, trips] = await Promise.all([
+        getTripById(tripId),
+        getAllTrips(4, 0)
+    ]);
+
     if (!trip) throw new Error('Trip not found');
 
-    const trips = await getAllTrips(4, 0);
 
     return {
         trip: trip as unknown as TripData,
@@ -187,16 +190,15 @@ const TripDetail = ({ loaderData }: { loaderData: TripDetailProps }) => {
                         </div>
                     </section>
                 ))}
-
                 <section className="flex flex-col gap-6">
                     <h2 className="p-24-semibold">Popular Trips</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div className="trip-grid">
                         {allTrips.map((trip) => {
                             console.log('AllTrips--> trip:', trip);
                             const tripDetails = parseTripData(trip.tripDetails);
                             if (!tripDetails) return null;
                             return (
-                                    <TripCard
+                                <TripCard
                                     key={trip.userId}
                                     id={trip.userId}
                                     name={tripDetails.name}
