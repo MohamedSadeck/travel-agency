@@ -1,7 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ID } from "appwrite";
 import { parseMarkdownToJson } from "lib/utils";
-import { p } from "node_modules/@react-router/dev/dist/routes-CZR-bKRt";
 import { data, type ActionFunctionArgs } from "react-router";
 import { appwriteConfig, tables } from "~/appwrite/client";
 
@@ -74,6 +73,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const imageResponse = await fetch(`https://api.unsplash.com/search/photos?query=${country} ${interests} ${travelStyle}&client_id=${unsplashApiKey}`);
 
     const imageUrls = (await imageResponse.json()).results.slice(0,3).map((img: any) => img.urls.regular || null);
+
+    
 
     const result = await tables.createRow({
         databaseId: appwriteConfig.databaseId,

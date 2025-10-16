@@ -6,7 +6,7 @@ import { comboBoxItems, selectItems, travelStyles } from "~/constants";
 import { cn, formatKey } from "lib/utils";
 import { LayerDirective, LayersDirective, MapsComponent } from "@syncfusion/ej2-react-maps";
 import { world_map } from "~/constants/world_map";
-import { Button, ButtonComponent } from "@syncfusion/ej2-react-buttons";
+import { ButtonComponent } from "@syncfusion/ej2-react-buttons";
 import { account } from "~/appwrite/client";
 import { useNavigate } from "react-router";
 
