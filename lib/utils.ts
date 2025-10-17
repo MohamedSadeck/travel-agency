@@ -11,17 +11,38 @@ export const formatDate = (dateString: string): string => {
 };
 
 export function parseMarkdownToJson(markdownText: string): unknown | null {
-  const regex = /```json\n([\s\S]+?)\n```/;
-  const match = markdownText.match(regex);
+  // Try to find JSON in markdown code blocks with 'json' identifier
+  let regex = /```json\s*\n([\s\S]+?)\n```/;
+  let match = markdownText.match(regex);
 
+  // Try to find JSON in markdown code blocks without 'json' identifier
+  if (!match) {
+    regex = /```\s*\n([\s\S]+?)\n```/;
+    match = markdownText.match(regex);
+  }
+
+  // If found in code blocks, try to parse it
   if (match && match[1]) {
     try {
-      return JSON.parse(match[1]);
+      return JSON.parse(match[1].trim());
     } catch (error) {
-      console.error("Error parsing JSON:", error);
-      return null;
+      console.error("Error parsing JSON from code block:", error);
     }
   }
+
+  // If no code blocks found or parsing failed, try to parse the entire text as JSON
+  // First, try to find a JSON object in the text
+  const jsonObjectRegex = /(\{[\s\S]*\})/;
+  const jsonMatch = markdownText.match(jsonObjectRegex);
+  
+  if (jsonMatch && jsonMatch[1]) {
+    try {
+      return JSON.parse(jsonMatch[1].trim());
+    } catch (error) {
+      console.error("Error parsing JSON from text:", error);
+    }
+  }
+
   console.error("No valid JSON found in markdown text.");
   return null;
 }
